@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { PenTool, Mic2, Target, Lightbulb, Home, Bell } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,6 +36,7 @@ export default function Navigation() {
   const { user } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const notificationButtonRef = useRef<HTMLButtonElement>(null);
   const currentPath = location.pathname === '/' ? '/feed' : location.pathname;
 
   useEffect(() => {
@@ -83,8 +84,9 @@ export default function Navigation() {
       />
       {user && (
         <button
+          ref={notificationButtonRef}
           className="relative p-2 hover:bg-navy-800 rounded-lg transition-colors text-gray-400 hover:text-white"
-          onClick={() => setShowNotifications(true)}
+          onClick={() => setShowNotifications(!showNotifications)}
         >
           <Bell size={20} />
           {unreadCount > 0 && (
@@ -97,6 +99,7 @@ export default function Navigation() {
       <NotificationsModal
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
+        anchorRef={notificationButtonRef}
       />
     </nav>
   );
