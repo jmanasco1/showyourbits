@@ -8,8 +8,8 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 
 interface User {
   id: string;
-  email: string;
-  userId: string;
+  username?: string;
+  email?: string;
   disabled?: boolean;
   isAdmin?: boolean;
   createdAt: string;
@@ -44,11 +44,20 @@ export default function AdminPortal() {
 
   const fetchUsers = async () => {
     try {
-      const usersSnapshot = await getDocs(collection(db, 'users'));
-      const usersData = usersSnapshot.docs.map(doc => ({
+      const usersQuery = query(collection(db, 'users'));
+      const querySnapshot = await getDocs(usersQuery);
+      const usersData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as User[];
+      
+      // Sort users by username
+      usersData.sort((a, b) => {
+        const usernameA = a.username || a.email?.split('@')[0] || a.id;
+        const usernameB = b.username || b.email?.split('@')[0] || b.id;
+        return usernameA.localeCompare(usernameB);
+      });
+      
       setUsers(usersData);
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -248,83 +257,32 @@ export default function AdminPortal() {
       )}
 
       {activeTab === 'users' ? (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">User Management</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-white">{user.userId}</div>
-                        <div className="text-sm text-gray-400">{user.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.disabled
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {user.disabled ? 'Disabled' : 'Active'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.isAdmin
-                          ? 'bg-purple-100 text-purple-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {user.isAdmin ? 'Admin' : 'User'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleToggleUserStatus(user.id, user.disabled)}
-                        className="text-blue-400 hover:text-blue-300"
-                        title={user.disabled ? 'Enable User' : 'Disable User'}
-                      >
-                        {user.disabled ? <UserCheck size={20} /> : <UserX size={20} />}
-                      </button>
-                      <button
-                        onClick={() => handleToggleAdminStatus(user.id, user.isAdmin)}
-                        className="text-purple-400 hover:text-purple-300"
-                        title={user.isAdmin ? 'Remove Admin' : 'Make Admin'}
-                      >
-                        <Star size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleResetPassword(user.email)}
-                        className="text-yellow-400 hover:text-yellow-300"
-                        title="Reset Password"
-                      >
-                        <Key size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-400 hover:text-red-300"
-                        title="Delete User"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="bg-navy-800 rounded-lg p-6">
+          <h2 className="text-2xl font-bold text-white mb-6">User Management</h2>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4 text-gray-400 font-medium mb-2">
+              <div>USERNAME</div>
+              <div>EMAIL</div>
+              <div>USER ID</div>
+            </div>
+            
+            {users.map(user => (
+              <div 
+                key={user.id} 
+                className="grid grid-cols-3 gap-4 p-4 bg-navy-700 rounded-lg hover:bg-navy-600 transition-colors"
+              >
+                <div className="text-white font-medium">
+                  {user.username || user.email?.split('@')[0] || 'Anonymous'}
+                </div>
+                <div className="text-gray-300">
+                  {user.email || 'No email'}
+                </div>
+                <div className="text-gray-400 font-mono text-sm">
+                  {user.id}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ) : activeTab === 'posts' ? (
