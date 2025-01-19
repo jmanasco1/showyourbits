@@ -152,6 +152,22 @@ export default function CommentModal({ isOpen, onClose, post }: CommentModalProp
       });
       console.log('Post comment count updated');
 
+      // Create notification if the commenter is not the post author
+      if (user.uid !== post.authorId) {
+        const notificationData = {
+          type: 'comment',
+          postId: post.id,
+          fromUserId: user.uid,
+          fromUserName: username,
+          toUserId: post.authorId,
+          read: false,
+          createdAt: serverTimestamp()
+        };
+
+        await addDoc(collection(db, 'notifications'), notificationData);
+        console.log('Comment notification created');
+      }
+
       setNewComment('');
       setReplyTo(null);
       console.log('Comment submission completed successfully');

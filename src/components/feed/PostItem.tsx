@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Edit2, Trash2, Save, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { doc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove, collection, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import ReactPlayer from 'react-player';
 import CommentModal from '../modals/CommentModal';
 import DeleteModal from '../modals/DeleteModal';
@@ -66,6 +66,21 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
           likes: increment(1),
           likedBy: arrayUnion(user.uid)
         });
+
+        // Only create notification if the post is not by the current user
+        if (user.uid !== post.authorId) {
+          const notificationData = {
+            type: 'like',
+            postId: post.id,
+            fromUserId: user.uid,
+            fromUserName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
+            toUserId: post.authorId,
+            read: false,
+            createdAt: serverTimestamp()
+          };
+
+          await addDoc(collection(db, 'notifications'), notificationData);
+        }
       }
     } catch (err) {
       console.error('Error toggling like:', err);
