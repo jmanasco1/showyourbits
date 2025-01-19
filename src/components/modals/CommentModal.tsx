@@ -119,8 +119,6 @@ export default function CommentModal({ isOpen, onClose, post }: CommentModalProp
       const userData = userDoc.exists() ? userDoc.data() : null;
       const username = userData?.username || user.email?.split('@')[0] || 'Anonymous';
 
-      setNewComment('');
-
       const commentData = {
         content: commentContent,
         authorId: user.uid,
@@ -140,10 +138,10 @@ export default function CommentModal({ isOpen, onClose, post }: CommentModalProp
         comments: increment(1)
       });
 
+      setNewComment('');
       setReplyTo(null);
     } catch (err) {
       console.error('Error adding comment:', err);
-      setNewComment(commentContent);
     } finally {
       setLoading(false);
     }
