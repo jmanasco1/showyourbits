@@ -109,15 +109,25 @@ export default function CommentModal({ isOpen, onClose, post }: CommentModalProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newComment.trim() || loading) return;
+    console.log('Submit started', { newComment, loading, user });
+    if (!user || !newComment.trim() || loading) {
+      console.log('Submit blocked:', { 
+        noUser: !user, 
+        emptyComment: !newComment.trim(), 
+        isLoading: loading 
+      });
+      return;
+    }
 
     setLoading(true);
     const commentContent = newComment.trim();
     
     try {
+      console.log('Fetching user data...');
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const userData = userDoc.exists() ? userDoc.data() : null;
       const username = userData?.username || user.email?.split('@')[0] || 'Anonymous';
+      console.log('User data fetched:', { username, userData });
 
       const commentData = {
         content: commentContent,
@@ -131,15 +141,20 @@ export default function CommentModal({ isOpen, onClose, post }: CommentModalProp
         likedBy: []
       };
 
-      await addDoc(collection(db, `posts/${post.id}/comments`), commentData);
+      console.log('Adding comment to Firestore...', commentData);
+      const commentRef = await addDoc(collection(db, `posts/${post.id}/comments`), commentData);
+      console.log('Comment added with ID:', commentRef.id);
       
+      console.log('Updating post comment count...');
       const postRef = doc(db, 'posts', post.id);
       await updateDoc(postRef, {
         comments: increment(1)
       });
+      console.log('Post comment count updated');
 
       setNewComment('');
       setReplyTo(null);
+      console.log('Comment submission completed successfully');
     } catch (err) {
       console.error('Error adding comment:', err);
     } finally {
