@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -26,6 +26,30 @@ export default function NotificationsModal({ isOpen, onClose, anchorRef }: Notif
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Mark notifications as read when opened
+  useEffect(() => {
+    if (!user || !isOpen) return;
+
+    const markNotificationsAsRead = async () => {
+      try {
+        const unreadNotifications = notifications.filter(n => !n.read);
+        const updatePromises = unreadNotifications.map(notification => 
+          updateDoc(doc(db, 'notifications', notification.id), {
+            read: true
+          })
+        );
+        await Promise.all(updatePromises);
+        console.log('Marked notifications as read:', unreadNotifications.length);
+      } catch (err) {
+        console.error('Error marking notifications as read:', err);
+      }
+    };
+
+    // Wait a bit before marking as read to ensure the animation is smooth
+    const timer = setTimeout(markNotificationsAsRead, 1000);
+    return () => clearTimeout(timer);
+  }, [isOpen, notifications, user]);
 
   useEffect(() => {
     if (!user || !isOpen) return;
