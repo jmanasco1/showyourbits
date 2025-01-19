@@ -2,7 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Edit2, Trash2, Save, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../lib/firebase';
-import { doc, updateDoc, deleteDoc, increment, arrayUnion, arrayRemove, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  doc, 
+  updateDoc, 
+  deleteDoc, 
+  increment, 
+  arrayUnion, 
+  arrayRemove, 
+  collection, 
+  getDocs,
+  getDoc, 
+  addDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
 import ReactPlayer from 'react-player';
 import CommentModal from '../modals/CommentModal';
 import DeleteModal from '../modals/DeleteModal';
@@ -53,15 +65,18 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
     if (!user) return;
 
     try {
+      console.log('Handling like...', { currentUser: user.uid, postAuthor: post.authorId });
       const postRef = doc(db, 'posts', post.id);
       const isLiked = post.likedBy?.includes(user.uid);
 
       if (isLiked) {
+        console.log('Removing like...');
         await updateDoc(postRef, {
           likes: increment(-1),
           likedBy: arrayRemove(user.uid)
         });
       } else {
+        console.log('Adding like...');
         await updateDoc(postRef, {
           likes: increment(1),
           likedBy: arrayUnion(user.uid)
@@ -69,17 +84,27 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
 
         // Only create notification if the post is not by the current user
         if (user.uid !== post.authorId) {
+          console.log('Creating like notification...');
+          // Get user data for the notification
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userData = userDoc.exists() ? userDoc.data() : null;
+          const username = userData?.username || user.email?.split('@')[0] || 'Anonymous';
+
           const notificationData = {
             type: 'like',
             postId: post.id,
             fromUserId: user.uid,
-            fromUserName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
+            fromUserName: username,
             toUserId: post.authorId,
             read: false,
             createdAt: serverTimestamp()
           };
 
-          await addDoc(collection(db, 'notifications'), notificationData);
+          console.log('Notification data:', notificationData);
+          const notificationRef = await addDoc(collection(db, 'notifications'), notificationData);
+          console.log('Notification created with ID:', notificationRef.id);
+        } else {
+          console.log('No notification created - user liked their own post');
         }
       }
     } catch (err) {
