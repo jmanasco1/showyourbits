@@ -1,11 +1,12 @@
 import React from 'react';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, Share2 } from 'lucide-react';
 import { Bit } from '../../types/bit';
 
 interface BitListProps {
   bits: Bit[];
   onEdit: (id: string) => void;
   onDelete: (id: string, title: string) => void;
+  onShare: (bit: Bit) => void;
   sortBy: 'date' | 'title';
   onSort: (sort: 'date' | 'title') => void;
 }
@@ -14,6 +15,7 @@ export default function BitList({
   bits,
   onEdit,
   onDelete,
+  onShare,
   sortBy,
   onSort
 }: BitListProps) {
@@ -63,20 +65,25 @@ export default function BitList({
         <div key={bit.id} className="bg-gray-800 rounded-lg p-6">
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-xl font-semibold text-white">{bit.title}</h3>
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => onShare(bit)}
+                className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                title="Share to Feed"
+              >
+                <Share2 size={18} />
+              </button>
               <button
                 onClick={() => onEdit(bit.id)}
-                className="text-blue-400 hover:text-blue-300"
-                title="Edit"
+                className="p-1 text-gray-400 hover:text-white transition-colors"
               >
-                <Edit2 size={20} />
+                <Edit2 size={18} />
               </button>
               <button
                 onClick={() => onDelete(bit.id, bit.title)}
-                className="text-red-400 hover:text-red-300"
-                title="Delete"
+                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
               >
-                <Trash2 size={20} />
+                <Trash2 size={18} />
               </button>
             </div>
           </div>

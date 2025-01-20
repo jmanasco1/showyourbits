@@ -11,6 +11,7 @@ export default function CreatePost() {
   const [newPost, setNewPost] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { getRootProps, getInputProps } = useDropzone({
     accept: {
@@ -28,41 +29,62 @@ export default function CreatePost() {
     if (!user || (!newPost.trim() && selectedFiles.length === 0) || loading) return;
 
     setLoading(true);
+    setError(null); // Clear any previous errors
 
     try {
+      console.log('Starting post creation...', { filesCount: selectedFiles.length });
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const userData = userDoc.exists() ? userDoc.data() : null;
       const username = userData?.username || user.email?.split('@')[0] || 'Anonymous';
+      const authorPhoto = userData?.photoURL || user.photoURL || '';  // Get user's photo URL
 
       const mediaUrls: string[] = [];
       const mediaTypes: string[] = [];
 
       for (const file of selectedFiles) {
-        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${file.name}`);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
-        mediaUrls.push(url);
-        mediaTypes.push(file.type.startsWith('image/') ? 'image' : 'video');
+        try {
+          console.log('Starting file upload:', { fileName: file.name, fileType: file.type, fileSize: file.size });
+          const bucket = 'activity-stream-d29c5.firebasestorage.app';
+          const storageRef = ref(storage, `gs://${bucket}/posts/${Date.now()}-${file.name}`);
+          
+          console.log('Uploading file to storage...');
+          const uploadResult = await uploadBytes(storageRef, file);
+          console.log('File uploaded successfully:', uploadResult);
+          
+          console.log('Getting download URL...');
+          const url = await getDownloadURL(storageRef);
+          console.log('Got download URL:', url);
+          
+          mediaUrls.push(url);
+          mediaTypes.push(file.type.startsWith('image/') ? 'image' : 'video');
+        } catch (uploadErr) {
+          console.error('Error uploading file:', file.name, uploadErr);
+          throw new Error(`Failed to upload file ${file.name}: ${uploadErr.message}`);
+        }
       }
 
-      await addDoc(collection(db, 'posts'), {
+      console.log('Creating Firestore document...');
+      const postData = {
         content: newPost.trim(),
         authorId: user.uid,
         authorName: username,
-        authorPhoto: user.photoURL || '',
-        mediaUrls: mediaUrls.length > 0 ? mediaUrls : [],
-        mediaTypes: mediaTypes.length > 0 ? mediaTypes : [],
+        authorPhoto: authorPhoto,  // Include author's photo in the post
+        mediaUrls,
+        mediaTypes,
         likes: 0,
         comments: 0,
         shares: 0,
         likedBy: [],
         createdAt: serverTimestamp()
-      });
+      };
+      const postDoc = await addDoc(collection(db, 'posts'), postData);
+      console.log('Post created successfully:', postDoc.id);
 
       setNewPost('');
       setSelectedFiles([]);
     } catch (err) {
       console.error('Error creating post:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create post');
     } finally {
       setLoading(false);
     }
@@ -71,6 +93,11 @@ export default function CreatePost() {
   return (
     <div className="bg-navy-400 rounded-lg shadow-xl p-6 border border-navy-500">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded-lg">
+            {error}
+          </div>
+        )}
         <textarea
           value={newPost}
           onChange={(e) => setNewPost(e.target.value)}
@@ -89,6 +116,7 @@ export default function CreatePost() {
                   className="h-20 w-20 object-cover rounded-lg"
                 />
                 <button
+                  type="button"
                   onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
                   className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                 >
@@ -104,7 +132,7 @@ export default function CreatePost() {
             <input {...getInputProps()} />
             <button
               type="button"
-              className="px-4 py-2 bg-navy-500 text-white rounded-lg hover:bg-navy-800 transition-colors flex items-center space-x-2"
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
             >
               <Image size={20} />
               <span>Add Media</span>
@@ -114,7 +142,11 @@ export default function CreatePost() {
           <button
             type="submit"
             disabled={loading || (!newPost.trim() && selectedFiles.length === 0)}
-            className="px-6 py-2 bg-navy-500 text-white rounded-lg hover:bg-navy-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-4 py-2 rounded-lg ${
+              loading
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-orange-500 hover:bg-orange-600'
+            } text-white font-medium transition-colors`}
           >
             {loading ? 'Posting...' : 'Post'}
           </button>

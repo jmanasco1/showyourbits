@@ -1,44 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import { LogOut, Shield, Sun, Moon, MessageCircle } from 'lucide-react';
-import Write from './components/Write';
-import Practice from './components/Practice';
-import Goals from './components/Goals';
-import IdeaBank from './components/IdeaBank';
-import AdminPortal from './components/AdminPortal';
-import Login from './components/Login';
-import Profile from './components/Profile';
+import { MessageCircle, LogOut, Shield } from 'lucide-react';
+import { Goals } from './components/Goals';
+import { Profile } from './components/Profile';
+import { Practice } from './components/Practice';
+import { Terms } from './components/Terms';
+import { Privacy } from './components/Privacy';
+import { AdminPortal } from './components/AdminPortal';
 import { Feed } from './components/feed/Feed';
 import FeedbackModal from './components/modals/FeedbackModal';
 import { useAuth } from './contexts/AuthContext';
 import logoImage from './assets/logo.png';
 import Navigation from './components/Navigation';
 import Layout from './components/Layout';
-import Privacy from './components/Privacy';
-import Terms from './components/Terms';
+import { Write } from './components/Write';
+import { IdeaBank } from './components/IdeaBank';
 
 export default function App() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-
-  const { user, logout } = useAuth();
-  const isAdmin = user?.email === 'admin@example.com';
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light';
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark');
-  };
+  const { user, logout, isAdmin } = useAuth();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   const handleProfileClick = (userId: string) => {
     navigate(`/profile/${userId}`);
@@ -54,12 +35,12 @@ export default function App() {
 
   return (
     <Layout>
-      <div className={`min-h-screen ${theme === 'dark' ? 'bg-navy-900' : 'bg-gray-100'} flex flex-col transition-colors duration-200`}>
-        <header className={`${theme === 'dark' ? 'bg-navy-900 border-navy-800' : 'bg-white border-gray-200'} shadow-lg border-b transition-colors duration-200 py-2`}>
+      <div className="min-h-screen bg-navy-900 flex flex-col">
+        <header className="bg-navy-900 border-navy-800 shadow-lg border-b py-2">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-24">
-              <div className="flex-1 pl-8">
-                <h1 className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: "'Dancing Script', cursive" }}>
+              <div className="flex-1 flex justify-end">
+                <h1 className="text-4xl font-bold text-white" style={{ fontFamily: "'Dancing Script', cursive" }}>
                   Show Your Bits
                 </h1>
               </div>
@@ -73,35 +54,16 @@ export default function App() {
               <div className="flex-1 flex items-center justify-end space-x-4">
                 <button
                   onClick={() => setShowFeedbackModal(true)}
-                  className={`flex items-center px-4 py-2 rounded-lg ${
-                    theme === 'dark' 
-                      ? 'text-gray-400 hover:text-white hover:bg-navy-800' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  } transition-colors`}
+                  className="flex items-center px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-navy-800 transition-colors"
                   aria-label="Feedback"
                 >
                   <MessageCircle size={20} className="mr-2" />
                   <span>Feedback</span>
                 </button>
-                <button
-                  onClick={toggleTheme}
-                  className={`px-4 py-2 rounded-lg flex items-center ${
-                    theme === 'dark' 
-                      ? 'text-gray-400 hover:text-white hover:bg-navy-800' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  } transition-colors`}
-                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                >
-                  {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
                 {isAdmin && (
                   <button
                     onClick={() => navigate('/admin')}
-                    className={`px-4 py-2 rounded-lg flex items-center ${
-                      theme === 'dark'
-                        ? 'text-gray-400 hover:text-white hover:bg-navy-800'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    } transition-colors`}
+                    className="px-4 py-2 rounded-lg flex items-center text-gray-400 hover:text-white hover:bg-navy-800 transition-colors"
                   >
                     <Shield size={20} className="mr-2" />
                     <span>Admin</span>
@@ -109,21 +71,13 @@ export default function App() {
                 )}
                 <button
                   onClick={() => navigate(`/profile/${user.uid}`)}
-                  className={`px-4 py-2 rounded-lg flex items-center ${
-                    theme === 'dark'
-                      ? 'text-gray-400 hover:text-white hover:bg-navy-800'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  } transition-colors`}
+                  className="px-4 py-2 rounded-lg flex items-center text-gray-400 hover:text-white hover:bg-navy-800 transition-colors"
                 >
                   {user.photoURL ? (
                     <img src={user.photoURL} alt="Profile" className="h-6 w-6 rounded-full mr-2" />
                   ) : (
-                    <div className={`h-6 w-6 rounded-full ${
-                      theme === 'dark' ? 'bg-navy-700' : 'bg-gray-300'
-                    } flex items-center justify-center mr-2`}>
-                      <span className={`text-sm font-medium ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
+                    <div className="h-6 w-6 rounded-full bg-navy-700 flex items-center justify-center mr-2">
+                      <span className="text-sm font-medium text-white">
                         {user.email?.[0].toUpperCase()}
                       </span>
                     </div>
@@ -132,11 +86,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={logout}
-                  className={`px-4 py-2 rounded-lg flex items-center ${
-                    theme === 'dark'
-                      ? 'text-gray-400 hover:text-white hover:bg-navy-800'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  } transition-colors`}
+                  className="px-4 py-2 rounded-lg flex items-center text-gray-400 hover:text-white hover:bg-navy-800 transition-colors"
                 >
                   <LogOut size={20} className="mr-2" />
                   <span>Logout</span>

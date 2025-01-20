@@ -18,6 +18,7 @@ import {
 import ReactPlayer from 'react-player';
 import CommentModal from '../modals/CommentModal';
 import DeleteModal from '../modals/DeleteModal';
+import { format, formatDistanceToNow } from 'date-fns';
 
 interface Post {
   id: string;
@@ -49,17 +50,25 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
   useEffect(() => {
     // Get initial comment count
     const getCommentCount = async () => {
-      const commentsRef = collection(db, `posts/${post.id}/comments`);
-      const snapshot = await getDocs(commentsRef);
-      if (post.comments !== snapshot.size) {
-        const postRef = doc(db, 'posts', post.id);
-        await updateDoc(postRef, {
-          comments: snapshot.size
-        });
+      try {
+        console.log('Fetching comments for post:', post.id);
+        const commentsRef = collection(db, `posts/${post.id}/comments`);
+        const snapshot = await getDocs(commentsRef);
+        console.log('Comments snapshot size:', snapshot.size);
+        
+        if (post.comments !== snapshot.size) {
+          console.log('Updating comment count from', post.comments, 'to', snapshot.size);
+          const postRef = doc(db, 'posts', post.id);
+          await updateDoc(postRef, {
+            comments: snapshot.size
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching comments:', err);
       }
     };
     getCommentCount();
-  }, [post.id]);
+  }, [post.id, post.comments]);
 
   const handleLike = async () => {
     if (!user) return;
@@ -136,32 +145,49 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
     }
   };
 
-  return (
-    <div className="bg-navy-400 rounded-lg shadow-lg p-6 border border-navy-500">
-      <div className="flex justify-between items-start mb-4">
-        <button
-          onClick={() => onProfileClick(post.authorId)}
-          className="flex items-center space-x-3 hover:opacity-80 transition-opacity text-left"
-        >
-          {post.authorPhoto ? (
-            <img
-              src={post.authorPhoto}
-              alt={post.authorName}
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-full bg-navy-500 flex items-center justify-center text-orange-500 font-semibold">
-              {post.authorName[0].toUpperCase()}
-            </div>
-          )}
-          <div>
-            <h3 className="font-semibold text-white">{post.authorName}</h3>
-            <p className="text-sm text-gray-400">
-              {post.createdAt?.toDate().toLocaleDateString()}
-            </p>
-          </div>
-        </button>
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    const diffInMonths = Math.floor(diffInDays / 30);
+    const diffInYears = Math.floor(diffInDays / 365);
 
+    if (diffInYears > 0) return `${diffInYears}y ago`;
+    if (diffInMonths > 0) return `${diffInMonths}m ago`;
+    if (diffInWeeks > 0) return `${diffInWeeks}w ago`;
+    if (diffInDays > 0) return `${diffInDays}d ago`;
+    if (diffInHours > 0) return `${diffInHours}h ago`;
+    if (diffInMinutes > 0) return `${diffInMinutes}m ago`;
+    return 'just now';
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
+      <div className="flex items-center mb-4">
+        <img
+          src={post.authorPhoto || '/default-avatar.png'}
+          alt={`${post.authorName}'s avatar`}
+          className="w-10 h-10 rounded-full object-cover mr-3 cursor-pointer"
+          onClick={() => onProfileClick(post.authorId)}
+        />
+        <div className="flex-1">
+          <h3 
+            className="font-semibold text-gray-900 dark:text-white cursor-pointer hover:underline"
+            onClick={() => onProfileClick(post.authorId)}
+          >
+            {post.authorName}
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {post.createdAt?.toDate() && (
+              <>
+                {format(post.createdAt.toDate(), 'MMM d, yyyy')} · {formatTimeAgo(post.createdAt.toDate())}
+              </>
+            )}
+          </p>
+        </div>
         {user?.uid === post.authorId && (
           <div className="flex items-center space-x-2">
             <button
@@ -185,7 +211,7 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            className="w-full bg-navy-500 border border-navy-500 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            className="w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
             rows={4}
           />
           <div className="flex justify-end space-x-2">
@@ -194,14 +220,14 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
                 setIsEditing(false);
                 setEditContent(post.content);
               }}
-              className="px-4 py-2 bg-navy-500 text-gray-300 rounded-lg hover:bg-navy-600 transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center space-x-2"
             >
               <X size={20} />
               <span>Cancel</span>
             </button>
             <button
               onClick={handleUpdatePost}
-              className="px-4 py-2 bg-navy-500 text-white rounded-lg hover:bg-navy-600 transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center space-x-2"
             >
               <Save size={20} />
               <span>Save</span>
@@ -209,7 +235,7 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
           </div>
         </div>
       ) : (
-        <p className="text-gray-100 whitespace-pre-wrap mb-4">{post.content}</p>
+        <p className="text-gray-700 dark:text-gray-200 whitespace-pre-wrap mb-4">{post.content}</p>
       )}
 
       {post.mediaUrls?.length > 0 && (
@@ -236,7 +262,7 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
         </div>
       )}
 
-      <div className="pt-4 border-t border-navy-500">
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-600">
         <div className="flex items-center space-x-4">
           <button
             onClick={handleLike}

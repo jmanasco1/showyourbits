@@ -4,6 +4,7 @@ import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from 'f
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface Notification {
   id: string;
@@ -24,6 +25,7 @@ interface NotificationsModalProps {
 
 export default function NotificationsModal({ isOpen, onClose, anchorRef }: NotificationsModalProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +88,25 @@ export default function NotificationsModal({ isOpen, onClose, anchorRef }: Notif
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  const handleNotificationClick = async (notification: Notification) => {
+    try {
+      // Mark as read if not already read
+      if (!notification.read) {
+        await updateDoc(doc(db, 'notifications', notification.id), {
+          read: true
+        });
+      }
+      
+      // Close the modal
+      onClose();
+      
+      // Navigate to the post
+      navigate(`/?postId=${notification.postId}`);
+    } catch (err) {
+      console.error('Error handling notification click:', err);
+    }
+  };
+
   if (!isOpen) return null;
 
   // Calculate position based on anchor element
@@ -117,7 +138,8 @@ export default function NotificationsModal({ isOpen, onClose, anchorRef }: Notif
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className="flex items-start gap-4 p-4 hover:bg-navy-800 transition-colors"
+                className="flex items-start gap-4 p-4 hover:bg-navy-800 transition-colors cursor-pointer"
+                onClick={() => handleNotificationClick(notification)}
               >
                 <div className="flex-1">
                   <p className="text-white">

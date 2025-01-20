@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { collection, query, orderBy, onSnapshot, getDocs, limit, startAfter, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDocs, limit, startAfter, where, doc, getDoc } from 'firebase/firestore';
 import { Search, Loader } from 'lucide-react';
 import { db } from '../../lib/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import CreatePost from './CreatePost';
 import PostItem from './PostItem';
+import { useSearchParams } from 'react-router-dom';
 
 interface Post {
   id: string;
@@ -25,6 +27,8 @@ interface FeedProps {
 }
 
 export function Feed({ onProfileClick }: FeedProps) {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +40,16 @@ export function Feed({ onProfileClick }: FeedProps) {
   
   const observer = useRef<IntersectionObserver>();
   const isInitialLoad = useRef(true);
+  const targetPostRef = useRef<HTMLDivElement>(null);
 
   // Setup real-time listener for initial posts and updates
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      setError('Please log in to view posts');
+      return;
+    }
+
     setLoading(true);
     setPosts([]);
     setLastPost(null);
@@ -46,65 +57,75 @@ export function Feed({ onProfileClick }: FeedProps) {
     setPage(0);
     isInitialLoad.current = true;
 
-    let q = query(
-      collection(db, 'posts'),
-      orderBy('createdAt', 'desc'),
-      limit(POSTS_PER_PAGE)
-    );
-
-    if (searchTerm) {
-      q = query(
+    try {
+      let q = query(
         collection(db, 'posts'),
-        where('content', '>=', searchTerm),
-        where('content', '<=', searchTerm + '\uf8ff'),
-        orderBy('content'),
         orderBy('createdAt', 'desc'),
         limit(POSTS_PER_PAGE)
       );
-    }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const postData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          content: data.content || '',
-          authorId: data.authorId || '',
-          authorName: data.authorName || '',
-          authorPhoto: data.authorPhoto || '',
-          mediaUrls: data.mediaUrls || [],
-          mediaTypes: data.mediaTypes || [],
-          likes: data.likes || 0,
-          comments: data.comments || 0,
-          shares: data.shares || 0,
-          likedBy: data.likedBy || [],
-          createdAt: data.createdAt
-        } as Post;
-      });
-
-      if (isInitialLoad.current) {
-        setPosts(postData);
-        isInitialLoad.current = false;
-      } else {
-        // Update existing posts while preserving pagination
-        setPosts(prevPosts => {
-          const firstPageIds = new Set(postData.map(post => post.id));
-          const remainingPosts = prevPosts.filter(post => !firstPageIds.has(post.id));
-          return [...postData, ...remainingPosts];
-        });
+      if (searchTerm) {
+        q = query(
+          collection(db, 'posts'),
+          where('content', '>=', searchTerm),
+          where('content', '<=', searchTerm + '\uf8ff'),
+          orderBy('content'),
+          orderBy('createdAt', 'desc'),
+          limit(POSTS_PER_PAGE)
+        );
       }
 
-      setLastPost(snapshot.docs[snapshot.docs.length - 1]);
-      setHasMore(postData.length === POSTS_PER_PAGE);
-      setLoading(false);
-    }, (error) => {
-      console.error('Error loading posts:', error);
-      setError('Failed to load posts. Please try again later.');
-      setLoading(false);
-    });
+      const unsubscribe = onSnapshot(q, 
+        (snapshot) => {
+          const postData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              content: data.content || '',
+              authorId: data.authorId || '',
+              authorName: data.authorName || '',
+              authorPhoto: data.authorPhoto || '',
+              mediaUrls: data.mediaUrls || [],
+              mediaTypes: data.mediaTypes || [],
+              likes: data.likes || 0,
+              comments: data.comments || 0,
+              shares: data.shares || 0,
+              likedBy: data.likedBy || [],
+              createdAt: data.createdAt
+            } as Post;
+          });
 
-    return () => unsubscribe();
-  }, [searchTerm]);
+          if (isInitialLoad.current) {
+            setPosts(postData);
+            isInitialLoad.current = false;
+          } else {
+            // Update existing posts while preserving pagination
+            setPosts(prevPosts => {
+              const firstPageIds = new Set(postData.map(post => post.id));
+              const remainingPosts = prevPosts.filter(post => !firstPageIds.has(post.id));
+              return [...postData, ...remainingPosts];
+            });
+          }
+
+          setLastPost(snapshot.docs[snapshot.docs.length - 1]);
+          setHasMore(postData.length === POSTS_PER_PAGE);
+          setLoading(false);
+          setError(null);
+        }, 
+        (error) => {
+          console.error('Error loading posts:', error);
+          setError('Error loading posts: ' + error.message);
+          setLoading(false);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Error setting up posts listener:', err);
+      setError('Error setting up posts listener: ' + (err instanceof Error ? err.message : String(err)));
+      setLoading(false);
+    }
+  }, [user, searchTerm]);
 
   // Load more posts when scrolling
   const loadMorePosts = useCallback(async () => {
@@ -188,6 +209,38 @@ export function Feed({ onProfileClick }: FeedProps) {
     if (node) observer.current.observe(node);
   }, [loading, hasMore, loadMorePosts]);
 
+  // Handle scrolling to specific post
+  useEffect(() => {
+    const postId = searchParams.get('postId');
+    if (!postId || !posts.length) return;
+
+    const postElement = document.getElementById(`post-${postId}`);
+    if (postElement) {
+      postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      postElement.classList.add('bg-navy-800/50');
+      setTimeout(() => {
+        postElement.classList.remove('bg-navy-800/50');
+      }, 2000);
+    } else {
+      // If post not found in current set, fetch it specifically
+      const fetchPost = async () => {
+        try {
+          const postDoc = await getDoc(doc(db, 'posts', postId));
+          if (postDoc.exists()) {
+            const postData = { id: postDoc.id, ...postDoc.data() } as Post;
+            setPosts(prev => {
+              if (prev.some(p => p.id === postId)) return prev;
+              return [postData, ...prev];
+            });
+          }
+        } catch (err) {
+          console.error('Error fetching specific post:', err);
+        }
+      };
+      fetchPost();
+    }
+  }, [searchParams, posts]);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
@@ -215,17 +268,10 @@ export function Feed({ onProfileClick }: FeedProps) {
         </div>
       )}
 
-      <div className="space-y-6 min-h-[400px]">
-        {posts.map((post, index) => (
-          <div
-            key={post.id}
-            ref={index === posts.length - 1 ? lastPostElementRef : undefined}
-            className={`transition-opacity duration-300 ${loading && index === posts.length - 1 ? 'opacity-50' : 'opacity-100'}`}
-          >
-            <PostItem
-              post={post}
-              onProfileClick={onProfileClick}
-            />
+      <div className="space-y-4 mb-4">
+        {posts.map((post) => (
+          <div key={post.id} id={`post-${post.id}`} className="transition-colors duration-500">
+            <PostItem post={post} onProfileClick={onProfileClick} />
           </div>
         ))}
       </div>

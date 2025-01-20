@@ -98,18 +98,12 @@ export default function Profile() {
       setUploading(true);
       setError(null);
 
-      // Upload image to Firebase Storage
-      const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+      const storageRef = ref(storage, `profile-pictures/${file.name}`);
       await uploadBytes(storageRef, file);
       const photoURL = await getDownloadURL(storageRef);
 
-      // Update auth profile
       await updateProfile(user, { photoURL });
-
-      // Update Firestore profile
-      await updateDoc(doc(db, 'users', userId), {
-        photoURL
-      });
+      await updateDoc(doc(db, 'users', userId), { photoURL });
 
       setProfile({ ...profile, photoURL });
       setEditedProfile({ ...editedProfile, photoURL });

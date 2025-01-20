@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore';
 import { MessageCircle, X, CornerDownRight, Edit2, Trash2, Heart } from 'lucide-react';
 import DeleteModal from './DeleteModal';
+import { format, formatDistanceToNow } from 'date-fns';
 
 interface Comment {
   id: string;
@@ -262,6 +263,14 @@ export default function CommentModal({ isOpen, onClose, post }: CommentModalProp
                               <span>@{comment.replyToName}</span>
                             </span>
                           )}
+                          <span className="text-sm text-gray-400">·</span>
+                          <span className="text-sm text-gray-400">
+                            {comment.createdAt?.toDate() && (
+                              <>
+                                {format(comment.createdAt.toDate(), 'MMM d, yyyy')} · {formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true })}
+                              </>
+                            )}
+                          </span>
                         </div>
                         
                         {editingComment?.id === comment.id ? (

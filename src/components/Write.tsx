@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import DeleteModal from './modals/DeleteModal';
@@ -23,6 +23,10 @@ export default function Write() {
   const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [shareModal, setShareModal] = useState({
+    isOpen: false,
+    bit: null as Bit | null
+  });
 
   // Fetch user's bits from Firestore
   useEffect(() => {
@@ -140,6 +144,44 @@ export default function Write() {
     }
   };
 
+  const handleShareClick = (bit: Bit) => {
+    setShareModal({ isOpen: true, bit });
+  };
+
+  const handleShare = async () => {
+    if (!user || !shareModal.bit) return;
+
+    try {
+      // Get user data
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.exists() ? userDoc.data() : null;
+      const username = userData?.username || user.email?.split('@')[0] || 'Anonymous';
+
+      // Create post from bit
+      const postData = {
+        content: `${shareModal.bit.title}\n\n${shareModal.bit.content}`,
+        authorId: user.uid,
+        authorName: username,
+        authorPhoto: user.photoURL || '',
+        mediaUrls: [],
+        mediaTypes: [],
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        likedBy: [],
+        createdAt: serverTimestamp(),
+        tags: shareModal.bit.tags || []
+      };
+
+      await addDoc(collection(db, 'posts'), postData);
+      console.log('Bit shared to feed successfully');
+      setShareModal({ isOpen: false, bit: null });
+    } catch (err) {
+      console.error('Error sharing bit to feed:', err);
+      setError('Failed to share to feed. ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
   const toggleSpeechRecognition = () => {
     if (!recognition) return;
 
@@ -220,6 +262,7 @@ export default function Write() {
         bits={filteredBits}
         onEdit={setEditingId}
         onDelete={(id, title) => setDeleteModal({ isOpen: true, id, title })}
+        onShare={handleShareClick}
         sortBy={sortBy}
         onSort={setSortBy}
       />
@@ -230,6 +273,32 @@ export default function Write() {
         onConfirm={() => handleDeleteBit(deleteModal.id)}
         onClose={() => setDeleteModal({ isOpen: false, id: '', title: '' })}
       />
+
+      {/* Share Modal */}
+      {shareModal.isOpen && shareModal.bit && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
+          <div className="bg-navy-900 rounded-lg p-6 max-w-md w-full mx-4 border border-navy-700">
+            <h2 className="text-xl font-bold text-white mb-4">Share to Feed</h2>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to share "{shareModal.bit.title}" to your feed? This will be visible to all users.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShareModal({ isOpen: false, bit: null })}
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Share
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

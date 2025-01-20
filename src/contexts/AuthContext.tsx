@@ -5,7 +5,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  updateProfile,
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -17,6 +18,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateProfilePhoto: (photoURL: string) => Promise<void>;
+  updateDisplayName: (displayName: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,9 +56,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       console.log('Signup successful:', result.user.uid);
       
+      const username = email.split('@')[0];
+      
+      // Set display name in Firebase Auth
+      await updateProfile(result.user, {
+        displayName: username
+      });
+      
       // Create initial user profile in Firestore
       await setDoc(doc(db, 'users', result.user.uid), {
-        username: email.split('@')[0], // Use part before @ as initial username
+        username: username,
+        displayName: username,
         bio: '',
         userId: result.user.uid,
         photoURL: result.user.photoURL || '',
@@ -103,13 +114,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function updateProfilePhoto(photoURL: string) {
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      // Update the user document in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { photoURL }, { merge: true });
+      
+      // Update the auth user profile
+      await updateProfile(user, { photoURL });
+      
+      console.log('Profile photo updated successfully');
+    } catch (error: any) {
+      console.error('Profile photo update error:', error);
+      throw error;
+    }
+  }
+
+  async function updateDisplayName(displayName: string) {
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      // Update the user document in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, { displayName }, { merge: true });
+      
+      // Update the auth user profile
+      await updateProfile(user, { displayName });
+      
+      console.log('Display name updated successfully');
+    } catch (error: any) {
+      console.error('Display name update error:', error);
+      throw error;
+    }
+  }
+
   const value = {
     user,
     loading,
     signup,
     login,
     logout,
-    resetPassword
+    resetPassword,
+    updateProfilePhoto,
+    updateDisplayName
   };
 
   return (

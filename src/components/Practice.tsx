@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, Play, ThumbsUp, Timer, Download } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import { Mic, Play, ThumbsUp, Timer, Download, Share2 } from 'lucide-react';
+import { collection, getDocs, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -22,9 +22,27 @@ export default function Practice() {
     const saved = localStorage.getItem('practice_writings');
     return saved ? JSON.parse(saved) : {};
   });
+  const [shareModal, setShareModal] = useState({
+    isOpen: false
+  });
 
   useEffect(() => {
     if (user) {
+      // Debug: Log user data when component mounts
+      console.log('Current user from Firebase Auth:', {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      });
+
+      // Debug: Check Firestore user data
+      const checkUserData = async () => {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        console.log('Firestore user data:', userDoc.exists() ? userDoc.data() : 'No user document');
+      };
+      checkUserData();
+
       fetchExercises();
     }
   }, [user]);
@@ -101,6 +119,57 @@ export default function Practice() {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+  };
+
+  const handleShare = async () => {
+    try {
+      if (!currentExercise || !writing || !user) {
+        console.log('Missing required data:', { currentExercise, writing, user });
+        return;
+      }
+
+      // Get user data exactly like Write.tsx does
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      console.log('Raw userDoc:', userDoc);
+      
+      const userData = userDoc.exists() ? userDoc.data() : null;
+      console.log('Raw userData:', userData);
+      
+      // Log each potential value separately
+      console.log('Potential values:', {
+        'userData?.username': userData?.username,
+        'user.email': user.email,
+        'user.email?.split("@")[0]': user.email?.split('@')[0]
+      });
+
+      const username = userData?.username || user.email?.split('@')[0] || 'Anonymous';
+      console.log('Selected username:', username);
+
+      const postData = {
+        content: `Exercise: ${currentExercise.title}\n\n${writing}`,
+        authorId: user.uid,
+        authorName: username, // Use username directly like Write.tsx does
+        authorPhoto: user.photoURL || '',
+        mediaUrls: [],
+        mediaTypes: [],
+        likes: 0,
+        comments: [],
+        tags: ['practice'],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      console.log('Final post data:', postData);
+
+      const postRef = collection(db, 'posts');
+      const newPost = await addDoc(postRef, postData);
+      console.log('Post created with ID:', newPost.id);
+
+      setShareModal({ isOpen: false });
+    } catch (err) {
+      console.error('Error sharing to feed:', err);
+      setError('Failed to share to feed');
+    }
   };
 
   if (loading) {
@@ -187,7 +256,15 @@ export default function Practice() {
                   className="w-full h-64 bg-navy-700 border border-navy-600 rounded-lg p-4 text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
                 />
 
-                <div className="flex justify-end">
+                <div className="flex justify-end space-x-2">
+                  <button
+                    onClick={() => setShareModal({ isOpen: true })}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    disabled={!writing}
+                  >
+                    <Share2 size={20} />
+                    <span>Share to Feed</span>
+                  </button>
                   <button
                     onClick={handleDownload}
                     className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-600 transition-colors flex items-center space-x-2"
@@ -208,6 +285,32 @@ export default function Practice() {
           </div>
         </div>
       </div>
+      {/* Share Confirmation Modal */}
+      {shareModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-navy-800 rounded-lg p-6 max-w-md w-full border border-navy-700">
+            <h3 className="text-lg font-semibold mb-4 text-white">Share to Public Feed</h3>
+            <p className="mb-4 text-gray-300">
+              Are you sure you want to share this practice writing to the public feed?
+              Everyone will be able to see what you wrote.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShareModal({ isOpen: false })}
+                className="px-4 py-2 text-gray-400 hover:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Share
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,15 +2,14 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { FirebaseOptions } from 'firebase/app';
 
-const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyAeCb7WSFLzISLhHJYxXPLapzSW4oSOTis",
-  authDomain: "activity-stream-d29c5.firebaseapp.com",
-  projectId: "activity-stream-d29c5",
-  storageBucket: "activity-stream-d29c5.appspot.com",
-  messagingSenderId: "645726731459",
-  appId: "1:645726731459:web:832d548c2e2723820a3676"
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
@@ -20,5 +19,14 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// Log initialization in development
+if (import.meta.env.DEV) {
+  console.log('Firebase Config:', {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain,
+    storageBucket: firebaseConfig.storageBucket
+  });
+}
 
 export { app, auth, db, storage };
