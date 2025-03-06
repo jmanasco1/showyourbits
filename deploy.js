@@ -26,16 +26,17 @@ try {
   process.exit(1);
 }
 
-// Make sure all changes are committed
+// Check for uncommitted changes to tracked files only
 try {
-  const status = execSync('git status --porcelain').toString();
+  // This checks only for modified tracked files, not untracked files
+  const status = execSync('git status -uno --porcelain').toString();
   if (status.trim()) {
-    console.log('Uncommitted changes detected:');
+    console.log('Uncommitted changes to tracked files detected:');
     console.log(status);
-    console.log('Please commit all changes before deploying');
+    console.log('Please commit these changes before deploying');
     process.exit(1);
   }
-  console.log('✅ No uncommitted changes detected');
+  console.log('✅ No uncommitted changes to tracked files detected');
 } catch (error) {
   console.error('Error checking git status:', error.message);
   process.exit(1);
