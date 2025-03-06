@@ -23,7 +23,8 @@ interface Post {
   createdAt: string;
 }
 
-export default function AdminPortal() {
+// Export as both default and named export for compatibility
+function AdminPortalComponent() {
   const { user } = useAuth();
   const [newExercise, setNewExercise] = useState('');
   const [loading, setLoading] = useState(false);
@@ -368,3 +369,7 @@ export default function AdminPortal() {
     </div>
   );
 }
+
+// Export as both default and named export for compatibility
+export default AdminPortalComponent;
+export const AdminPortal = AdminPortalComponent;

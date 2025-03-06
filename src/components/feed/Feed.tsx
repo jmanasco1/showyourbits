@@ -26,6 +26,7 @@ interface FeedProps {
   onProfileClick: (userId: string) => void;
 }
 
+// Keep the named export for existing imports
 export function Feed({ onProfileClick }: FeedProps) {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -296,3 +297,6 @@ export function Feed({ onProfileClick }: FeedProps) {
     </div>
   );
 }
+
+// Add default export for compatibility
+export default Feed;
