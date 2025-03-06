@@ -23,18 +23,35 @@ export async function initializePosts() {
     
     // Only add sample posts if collection is empty
     if (snapshot.empty) {
-      // Create system user profile
-      await setDoc(doc(db, 'users', 'system'), {
-        username: 'Show Your Bits',
-        bio: 'Official system account'
-      });
-
-      for (const post of samplePosts) {
-        await addDoc(postsRef, post);
+      try {
+        // Create system user profile
+        await setDoc(doc(db, 'users', 'system'), {
+          username: 'Show Your Bits',
+          bio: 'Official system account'
+        });
+        
+        // Add sample posts
+        for (const post of samplePosts) {
+          await addDoc(postsRef, post);
+        }
+        console.log('Sample posts added successfully');
+      } catch (error) {
+        console.log('Error adding sample data:', error);
+        // Continue execution even if adding sample data fails
       }
-      console.log('Sample posts initialized successfully');
     }
   } catch (error) {
     console.error('Error initializing posts:', error);
+    // Don't throw the error, just log it to prevent app from crashing
+  }
+}
+
+// Initialize Firebase Functions
+export function initializeFirebaseFunctions() {
+  try {
+    // This function can be expanded to initialize other Firebase services
+    console.log('Firebase Functions initialized');
+  } catch (error) {
+    console.error('Error initializing Firebase Functions:', error);
   }
 }

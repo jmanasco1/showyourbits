@@ -53,21 +53,38 @@ export default function PostItem({ post, onProfileClick }: PostItemProps) {
       try {
         console.log('Fetching comments for post:', post.id);
         const commentsRef = collection(db, `posts/${post.id}/comments`);
-        const snapshot = await getDocs(commentsRef);
-        console.log('Comments snapshot size:', snapshot.size);
         
-        if (post.comments !== snapshot.size) {
-          console.log('Updating comment count from', post.comments, 'to', snapshot.size);
-          const postRef = doc(db, 'posts', post.id);
-          await updateDoc(postRef, {
-            comments: snapshot.size
-          });
+        try {
+          const snapshot = await getDocs(commentsRef);
+          console.log('Comments snapshot size:', snapshot.size);
+          
+          if (post.comments !== snapshot.size) {
+            console.log('Updating comment count from', post.comments, 'to', snapshot.size);
+            const postRef = doc(db, 'posts', post.id);
+            await updateDoc(postRef, {
+              comments: snapshot.size
+            });
+          }
+        } catch (permissionErr) {
+          // Handle permission errors silently - don't spam the console
+          if (permissionErr.code === 'permission-denied') {
+            // Only log once for debugging purposes
+            console.log('Permission denied for comments on post:', post.id);
+          } else {
+            // Log other errors normally
+            console.error('Error fetching comments:', permissionErr);
+          }
         }
       } catch (err) {
-        console.error('Error fetching comments:', err);
+        // Handle other unexpected errors
+        console.error('Unexpected error in getCommentCount:', err);
       }
     };
-    getCommentCount();
+    
+    // Only attempt to fetch comments if we have a valid post ID
+    if (post.id) {
+      getCommentCount();
+    }
   }, [post.id, post.comments]);
 
   const handleLike = async () => {

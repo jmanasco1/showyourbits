@@ -1,34 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { MessageCircle, LogOut, Shield } from 'lucide-react';
-import { Goals } from './components/Goals';
-import { Profile } from './components/Profile';
-import { Practice } from './components/Practice';
-import { Terms } from './components/Terms';
-import { Privacy } from './components/Privacy';
-import { AdminPortal } from './components/AdminPortal';
+import Goals from './components/Goals';
+import Profile from './components/Profile';
+import Practice from './components/Practice';
+import Terms from './components/Terms';
+import Privacy from './components/Privacy';
+import AdminPortal from './components/AdminPortal';
 import { Feed } from './components/feed/Feed';
 import FeedbackModal from './components/modals/FeedbackModal';
 import { useAuth } from './contexts/AuthContext';
 import logoImage from './assets/logo.png';
 import Navigation from './components/Navigation';
 import Layout from './components/Layout';
-import { Write } from './components/Write';
-import { IdeaBank } from './components/IdeaBank';
+import Write from './components/Write';
+import IdeaBank from './components/IdeaBank';
+import { FirebaseContext } from './components/FirebaseProvider';
+import Login from './components/Login';
 
 export default function App() {
   const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuth();
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const { user, loading, logout, isAdmin } = useAuth();
+  const { error: firebaseError } = useContext(FirebaseContext);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const handleProfileClick = (userId: string) => {
-    navigate(`/profile/${userId}`);
+    setSelectedProfileId(userId);
+    navigate('/profile');
   };
 
+  // Show loading state while auth is initializing
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-navy-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
+
+  // If not logged in, show login page
   if (!user) {
     return (
-      <div className="min-h-screen bg-navy-900 flex items-center justify-center">
+      <div className="min-h-screen bg-navy-900">
         <Login />
+      </div>
+    );
+  }
+
+  // If there's a Firebase error, show a more user-friendly error message
+  if (firebaseError) {
+    return (
+      <div className="min-h-screen bg-navy-900 flex flex-col items-center justify-center text-white p-4">
+        <h1 className="text-2xl font-bold mb-4">Connection Issue</h1>
+        <p className="mb-4">We're having trouble connecting to our servers. This could be due to:</p>
+        <ul className="list-disc pl-5 mb-4">
+          <li>Your internet connection</li>
+          <li>Temporary server maintenance</li>
+          <li>Firewall or network restrictions</li>
+        </ul>
+        <p>Please try again later or check your network connection.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 transition-colors"
+        >
+          Retry Connection
+        </button>
       </div>
     );
   }
@@ -53,7 +90,7 @@ export default function App() {
               </div>
               <div className="flex-1 flex items-center justify-end space-x-4">
                 <button
-                  onClick={() => setShowFeedbackModal(true)}
+                  onClick={() => setFeedbackOpen(true)}
                   className="flex items-center px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-navy-800 transition-colors"
                   aria-label="Feedback"
                 >
@@ -116,8 +153,8 @@ export default function App() {
         </main>
 
         <FeedbackModal
-          isOpen={showFeedbackModal}
-          onClose={() => setShowFeedbackModal(false)}
+          isOpen={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
         />
       </div>
     </Layout>
