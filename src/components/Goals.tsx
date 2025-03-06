@@ -11,7 +11,8 @@ interface Goal {
   category: string;
 }
 
-export default function Goals() {
+// Export as both default and named export for compatibility
+function GoalsComponent() {
   const [goals, setGoals] = useState<Goal[]>(() => {
     const saved = localStorage.getItem('goals');
     return saved ? JSON.parse(saved) : [];
@@ -230,3 +231,7 @@ export default function Goals() {
     </div>
   );
 }
+
+// Export as both default and named export for compatibility
+export default GoalsComponent;
+export const Goals = GoalsComponent;

@@ -9,7 +9,8 @@ interface Exercise {
   title: string;
 }
 
-export default function Practice() {
+// Export as both default and named export for compatibility
+function PracticeComponent() {
   const { user } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
@@ -314,3 +315,7 @@ export default function Practice() {
     </div>
   );
 }
+
+// Export as both default and named export for compatibility
+export default PracticeComponent;
+export const Practice = PracticeComponent;

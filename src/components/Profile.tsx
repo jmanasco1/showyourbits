@@ -19,7 +19,8 @@ interface UserProfile {
   };
 }
 
-export default function Profile() {
+// Export as both default and named export for compatibility
+function ProfileComponent() {
   const { user, loading: authLoading } = useAuth();
   const { userId } = useParams();
   const [uploading, setUploading] = useState(false);
@@ -346,3 +347,7 @@ export default function Profile() {
     </div>
   );
 }
+
+// Export as both default and named export for compatibility
+export default ProfileComponent;
+export const Profile = ProfileComponent;
