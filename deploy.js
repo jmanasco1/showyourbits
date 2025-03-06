@@ -1,7 +1,7 @@
 // deploy.js - Script to help sync local environment with Vercel deployment
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 // Colors for console output
 const colors = {
