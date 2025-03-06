@@ -8,7 +8,8 @@ import BitEditor from './write/BitEditor';
 import BitList from './write/BitList';
 import { Bit } from '../types/bit';
 
-export default function Write() {
+// Export as both default and named export for compatibility
+function WriteComponent() {
   const { user } = useAuth();
   const [bits, setBits] = useState<Bit[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -302,3 +303,7 @@ export default function Write() {
     </div>
   );
 }
+
+// Export as both default and named export for compatibility
+export default WriteComponent;
+export const Write = WriteComponent;

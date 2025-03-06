@@ -13,7 +13,7 @@ interface Idea {
   userId: string;
 }
 
-export default function IdeaBank() {
+function IdeaBankComponent() {
   const { user } = useAuth();
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [newIdea, setNewIdea] = useState({
@@ -458,3 +458,7 @@ export default function IdeaBank() {
     </div>
   );
 }
+
+// Export as both default and named export for compatibility
+export default IdeaBankComponent;
+export const IdeaBank = IdeaBankComponent;
